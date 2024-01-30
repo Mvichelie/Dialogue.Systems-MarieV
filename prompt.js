@@ -1,7 +1,8 @@
-var guess = prompt("Enter a number between 1 to 12 ")
+var guess = prompt("Enter a number between 1 to 10 ");
+var randomNumber = Math.floor(Math.random() * 10) + 1;
 
-if (guess != 6){
-    alert("Not matched!")
+if (guess != randomNumber){
+    alert("Not matched!" + randomNumber);
 } else {
-    alert("Good match!")
-}   
+    alert("Good work!");
+} 

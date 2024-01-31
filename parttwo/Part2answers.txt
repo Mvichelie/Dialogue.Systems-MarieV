@@ -1,0 +1,6 @@
+How are the files connected together?
+In a Vite project, files connect via ES module imports. Upon creation, an index.html file in the public directory references the JavaScript file in dist. This JS file handles application logic and content rendering. CSS stylesheets can be imported into JS files, allowing for seamless styling.
+
+What method is used in the script files to retrieve and alter the HTML element?
+
+Vite scripts use standard DOM or Document Object Model, methods to find and change HTML elements. This makes it easy to work with elements in your application.

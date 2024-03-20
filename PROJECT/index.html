@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Room Game</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div class="card">
+      <div id="instructionsContainer"></div> <!-- Changed ID this referes --> 
+
+      <div id="buttonDiv">
+        <!-- Button for starting the game -->
+        <button id="startButton" type="button">Press to Start:</button> <!-- Changed ID and text -->
+        <!-- Button for counter -->
+        <button id="hint" type="button">Hint:</button>
+      </div>
+      <div id="hintContainer"></div> <!-- Changed ID this referes --> 
+
+      <!-- Options for items -->
+      <div id="options" class="options-container">
+        <!-- JavaScript will dynamically populate this section -->
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

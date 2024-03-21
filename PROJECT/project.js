@@ -1,20 +1,20 @@
 import { assign, createActor, setup, not} from "xstate";
 import { speechstate } from "speechstate";
 import { createBrowserInspector } from "@statelyai/inspect";
-import { KEY, NLU_KEY } from "./azure.js";
+import { KEY} from "./azure.js";
 
 const inspector = createBrowserInspector();
 
 const azureLanguageCredentials = {
   endpoint: "https://m-v-lab3.cognitiveservices.azure.com/language/:analyze-conversations?api-version=2022-10-01-preview",
-  key: KEY, NLU_KEY,
+  key: KEY,
   deploymentName: "Game",
   projectName: "Game",
 };
 
 const azureCredentials = {
   endpoint: "https://northeurope.api.cognitive.microsoft.com/sts/v1.0/issuetoken",
-  key: KEY, NLU_KEY
+  key: KEY
 };
 
 const settings = {
@@ -28,7 +28,7 @@ const settings = {
 
 const correctChoices = {
    dolphin: {right: "Dolphin"},
-   remote: {right: "Remote control"},
+   remote: {right: "Remote"},
    mirror: {right: "Mirror"},
    falafel: {right: "Falafel"},
     sofa: {right: "Sofa"},
@@ -45,9 +45,9 @@ function getRight(utterance) {
     return (correctChoices [utterance.toLowerCase()] || {}).right; 
 }
 
-function correctIntent(event) {     
-    return event === "right";
-  }
+// function correctIntent(event) {     
+//     return event === "right";
+//   }
   
 //   function incorrectIntent(event) {  
 //     return event === "wrong";
@@ -69,9 +69,7 @@ const dmMachine = setup({
     actions: {
         listenForUsersAnswer : ({ context }) => {
           console.log("Listening for user's answer...");
-          context.ssRef.send({type: "LISTEN",
-          value: { nlu: true }
-            })
+          context.ssRef.send({ type: "LISTEN" });
         },
     
         speakToTheUser : ({ context}, params) => {
@@ -87,13 +85,13 @@ const dmMachine = setup({
         }),
         displayOptions: ({ context }) => {
             const optionsContainer = document.getElementById("options");
-            optionsContainer.innerHTML = ""; // Clear previous options
+            optionsContainer.innerHTML = "";
             
-            let optionsHTML = ""; // Initialize the options HTML string
+            let optionsHTML = ""; 
             
             const choices = sceneChoices[context.currentScene];
             const updateLastUtterance = assign({
-              lastUtterance: (context, event) => event.data.utterance // Assuming event.data.utterance holds the recognized text
+              lastUtterance: (context, event) => event.data.utterance 
             });
             optionsHTML += `<div class="options-container">`;
             for (const choice of choices) {
@@ -113,9 +111,7 @@ const dmMachine = setup({
     }}).createMachine({
         /** @xstate-layout N4IgpgJg5mDOIC5QBECyA6ACgJzABwENcBiAQQGUAlAFWvIH1KBRU5ATQG0AGAXUVDwB7WAEsALiMEA7fiAAeiAIwBOAOwAaEAE8li1egCsAXyOa06AOoFx1QeTFExxAMIAZAJLOA0tz5IQQqIS0rIKCCpc6ABMBpo6CAYAHAAs0camIOY4ggC2eGKkUhCksADWWNi5+cTkmCxe9M4A8qiYrkzUTL6ygeKSMv5hyar6qrHaiABsk4roitMLiwsmZhjZeQVFJeXbxMzNAOIAcu7kTMjd-r3BA6Bh04mGkzFxiAYGiiuZa5UbhcVldC7Wr1RotNodLq8HrCPohQZKSbJV4IZKKZJfczIaRgFwebyXASwm6hRHIiYJADMlPQYxMGSkgggcFkaBhQX6pIQAFpJijeZifvgiGB2XDbvJEMkoijErN0qtLNYxLZ7I4xSSEQkNBSkqk6Rksr98v9thrOVqoqp9eN4slJjTkspncoopTVFxJlwDMNBRUqpsAeV1vlzfC7ohKVEorTbVNKY95ktk36Q4HtkCymGJfdJgZ0JSDMp3XGEHmaTE-dipKKrsSLRGEjKKdLIlxEtTO13qfSjEA */
         context: {
-          user_utterance: "",
-          items:  [],
-          currentItemIndex: 0,
+          user_utterance: "",   
           currentScene: 1,
 
         },
@@ -157,9 +153,11 @@ const dmMachine = setup({
             },
         },
           Scene1: {
-            entry: [{ type: "speakToTheUser", 
+            entry: ["displayOptions",
+              { type: "speakToTheUser", 
             params: `Please choose an item: dolphin, banana or lizard`,
-                }],
+                }
+              ],
             on: {
             SPEAK_COMPLETE : "Scene1listen",
             },
@@ -168,17 +166,26 @@ const dmMachine = setup({
         Scene1listen: {
             entry: "listenForUsersAnswer",
             on: {
-              RECOGNISED : [{ guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"),
-              target: "VerificationSpeak"},
+              RECOGNISED : [{ 
+                guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+                target: "VerificationSpeak" },
                 {
-                actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
-                target: "Reraise1"}
-              ],     
-             },
+                actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //
+                target: "Reraise1"} 
+              ],  
+              ASR_NOINPUT: "Noinput"   
             },
+          },
+          Noinput: {
+            entry: [{ type: "speakUser", params: `Hello player, can you repeat your answer?` }],
+            on: { SPEAK_COMPLETE: "Scene1" }
+          },
+
           Reraise1: {
             entry: [{ type: "speakToTheUser", 
-            params:  ({context})=> `The item ${context.user_utterance} is not correct. Please say the item you want to bring with you, dolphin, banana or lizard?` ,
+            params: 
+             `Please say the item you want to bring with you, dolphin, banana or lizard?` ,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene1listen",
@@ -187,38 +194,40 @@ const dmMachine = setup({
 
         VerificationSpeak: {
             entry: [{ type: "speakToTheUser", 
-            params: ({ context }) => `The item  ${getRight(context.user_utterance)} is correct! `,
+            params: ({ context }) => `${getRight(context.user_utterance)} is correct! `,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene2",
           },
         },  
         Scene2: {
-            entry: [{ type: "speakToTheUser", 
-            params: `Now we have a dolphin, please say the next item that you want to bring with you, guitar, remote or chair?`,
-                }],
+            entry: ["displayOptions",
+              { type: "speakToTheUser", 
+            params: `Now we have a dolphin, please say the next item that you want to bring with you: guitar, remote or chair?`,
+                }
+              ],
             on: {
             SPEAK_COMPLETE : "Scene2listen",
             },
         },
 
         Scene2listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ 
-                guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak2" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise2"},
-              ],     
-             },
-         },
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak2" },
+              {
+              actions: [{type: "speakToTheUser", params:({ context }) =>  `The item ${(context.user_utterance)} is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
+              target: "Reraise2"}
+            ],     
+           },
+          },
 
          VerificationSpeak2: {
             entry: [{ type: "speakToTheUser", 
-            params: ({ context }) => `The item  ${getRight(context.user_utterance)} is correct! `,
+            params: ({ context }) => ` ${getRight(context.user_utterance)} is correct! `,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene3",
@@ -233,27 +242,29 @@ const dmMachine = setup({
             },
         },
         Scene3: {
-            entry: [{ type: "speakToTheUser", 
+            entry: ["displayOptions",
+            { type: "speakToTheUser", 
             params: `Now we have a dolphin and a remote, please say the third item that you would like to bring: mirror, water or candy?`,
-                }],
+                }
+              ],
             on: {
             SPEAK_COMPLETE : "Scene3listen",
             },
         },
 
         Scene3listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ 
-                guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak3" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise3"},
-              ],     
-             },
-         },
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak3" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}], 
+              target: "Reraise3"}
+            ],     
+           },
+          },
 
          VerificationSpeak3: {
             entry: [{ type: "speakToTheUser", 
@@ -273,31 +284,33 @@ const dmMachine = setup({
         },
 
         Scene4: {
-            entry: [{ type: "speakToTheUser", 
+            entry: ["displayOptions",
+            { type: "speakToTheUser", 
             params: `Now we have dolphin, remote, and mirror,  please say the fourth item that you would like to bring: Clock, Falafel or Pen?`,
-                }],
+                }
+              ],
             on: {
             SPEAK_COMPLETE : "Scene4listen",
             },
         },
 
         Scene4listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ 
-                guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak4" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise4"},
-              ],     
-             },
-         },
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak4" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
+              target: "Reraise4"}
+            ],     
+           },
+          },
 
          VerificationSpeak4: {
             entry: [{ type: "speakToTheUser", 
-            params: ({ context }) => `The item  ${getRight(context.user_utterance)} is correct! `,
+            params: ({ context }) => ` ${getRight(context.user_utterance)} is correct! `,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene5",
@@ -305,34 +318,36 @@ const dmMachine = setup({
         }, 
         Reraise4: {
             entry: [{ type: "speakToTheUser", 
-            params: `Please say the item you want to bring with you, sofa, drums or pillow??` ,
+            params: `Please say the item you want to bring with you: Clock, Falafel or Pen??` ,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene4listen",
             },
         },
         Scene5: {
-            entry: [{ type: "speakToTheUser", 
-            params: `Now we have dolphin, remote, mirror and sofa, do you see the pattern? please say the fifth item that you would like to bring: trumpet, burger or laptop ?`,
-                }],
+            entry: ["displayOptions",
+            { type: "speakToTheUser", 
+            params: `Now we have dolphin, remote, mirror and falafel, do you see the pattern? please say the fifth item that you would like to bring: sofa, drums or pillow?`,
+                }
+              ],
             on: {
             SPEAK_COMPLETE : "Scene5listen",
             },
         },
 
         Scene5listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ 
-                guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak5" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise5"},
-              ],     
-             },
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak5" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}],
+              target: "Reraise5"}
+           ],     
          },
+        },
 
          VerificationSpeak5: {
             entry: [{ type: "speakToTheUser", 
@@ -343,7 +358,8 @@ const dmMachine = setup({
           },
         }, 
         Reraise5: {
-            entry: [{ type: "speakToTheUser", 
+            entry: ["displayOptions",
+            { type: "speakToTheUser", 
             params: `Please say the item you want to bring with you, sofa, drums or pillow?` ,
                 }],
             on: { 
@@ -361,18 +377,18 @@ const dmMachine = setup({
         },
 
         Scene6listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak6" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise6"},
-              ],     
-             },
-         },
-
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak6" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
+              target: "Reraise6"}
+            ],     
+           },
+          },
          VerificationSpeak6: {
             entry: [{ type: "speakToTheUser", 
             params: ({ context }) => `The item  ${getRight(context.user_utterance)} is correct! `,
@@ -386,33 +402,34 @@ const dmMachine = setup({
             params: `Please say the item you want to bring with you,  trumpet, burger or laptop ?` ,
                 }],
             on: { 
-              SPEAK_COMPLETE: "Scene5listen",
+              SPEAK_COMPLETE: "Scene6listen",
             },
         },
 
 
         Scene7: {
-            entry: [{ type: "speakToTheUser", 
-            params: `For the sixth item, i will let you think if you have figured out the pattern, please say the item that you would like to bring: trumpet, burger or laptop ?`,
+            entry: [
+              "displayOptions",
+              { type: "speakToTheUser", 
+            params: `For the seventh item, please say the item that you would like to bring: ticket, microphone or dog?`,
                 }],
             on: {
             SPEAK_COMPLETE : "Scene7listen",
             },
         },
-
         Scene7listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak7" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise7"},
-              ],     
-             },
-         },
-
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak7" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
+              target: "Reraise7"}
+            ],     
+           },
+        },
          VerificationSpeak7: {
             entry: [{ type: "speakToTheUser", 
             params: ({ context }) => `The item  ${getRight(context.user_utterance)} is correct! `,
@@ -423,7 +440,7 @@ const dmMachine = setup({
         }, 
         Reraise7: {
             entry: [{ type: "speakToTheUser", 
-            params: `Please say the item you want to bring with you,  trumpet, burger or laptop ?` ,
+            params: `Please say the item you want to bring with you, ticket, microphone or dog ?` ,
                 }],
             on: { 
               SPEAK_COMPLETE: "Scene7listen",
@@ -431,26 +448,28 @@ const dmMachine = setup({
         },
 
         Scene8: {
-            entry: [{ type: "speakToTheUser", 
-            params: `For the sixth item, i will let you think if you have figured out the pattern, please say the item that you would like to bring: trumpet, burger or laptop ?`,
+            entry: ["displayOptions",
+            { type: "speakToTheUser", 
+            params: `What is the last item that you want to bring with you: phone, dough or light?`,
                 }],
             on: {
-            SPEAK_COMPLETE : "Scene7listen",
+            SPEAK_COMPLETE : "Scene8listen",
             },
         },
 
         Scene8listen: {
-            entry: "listenForUsersAnswer",
-            on: {
-              RECOGNISED : [{ guard: ({event}) => (iscorrectChoices(event.value[0].utterance) === true && event.nluValue.topIntent === "right"), 
-                actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
-                target: "VerificationSpeak8" },
-                {
-                actions: {type: "speakToTheUser", params: ({context})=> `The item ${context.user_utterance} is not correct`},
-                target: "Reraise8"},
-              ],     
-             },
-         },
+          entry: "listenForUsersAnswer",
+          on: {
+            RECOGNISED : [{ 
+              guard: ({event}) => iscorrectChoices(event.value[0].utterance), 
+              actions: assign({user_utterance: ({context, event}) => event.value[0].utterance}),
+              target: "VerificationSpeak8" },
+              {
+              actions: [{type: "speakToTheUser", params:  `The item is not correct`}], //this is what have worked for me initially, but i jsut added reraise1
+              target: "Reraise8"}
+            ],     
+           },
+          },
 
          VerificationSpeak8: {
             entry: [{ type: "speakToTheUser", 
@@ -473,7 +492,7 @@ const dmMachine = setup({
 
         Done: {
             entry: [{ type: "say", 
-            params: ({ context }) => `Congratulations! You can now enter the music room with the following, did you figure out the pattern?  Well done!`,
+            params: `Congratulations! You can now enter the music room with the following items: dolphin, remote, mirror, falafel, sofa, laptop, ticket and a dough did you figure out the pattern?  Well done!`,
               }],
             on : {SPEAK_COMPLETE : "#dmMachine.Done"}  
         },
@@ -495,6 +514,8 @@ export function setupButton(element) {
   element.addEventListener("click", () => {
     dmActor.send({ type: "CLICK" });
   });
+
+
 //   dmActor.getSnapshot().context.ssRef.subscribe((snapshot) => {
 //     element.innerHTML = `${snapshot.value.AsrTtsManager.Ready}`;
 //   });
